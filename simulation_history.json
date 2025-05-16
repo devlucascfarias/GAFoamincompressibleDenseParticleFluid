@@ -1,0 +1,18 @@
+[
+    {
+        "solver": "incompressibleDenseParticleFluid",
+        "case_path": "/home/interface/Downloads/GAFoam-main/simulacoes/toy5/toy4",
+        "start_time": "2025-05-16 11:47:44",
+        "end_time": "2025-05-16 11:50:50",
+        "status": "Interrupted",
+        "notes": ""
+    },
+    {
+        "solver": "incompressibleDenseParticleFluid",
+        "case_path": "/home/interface/Downloads/GAFoam-main/simulacoes/toy5/toy4",
+        "start_time": "2025-05-16 12:02:14",
+        "end_time": "2025-05-16 12:02:14",
+        "status": "Interrompida",
+        "notes": ""
+    }
+]
