@@ -1,88 +1,67 @@
-# GAFoam
+# GAFoamincompressibleDenseParticleFluid
 
 Interface gráfica para OpenFOAM utilizando Python e PyQt5.
 
 ---
 
-## 1. Executando com Ambiente Virtual
+## Instalação e Execução
+
+### 1. Clone o repositório
 
 ```bash
-# Clone o repositório (ou copie os arquivos)
-git clone https://github.com/seu-usuario/GAFoam.git
-cd GAFoam
+git clone https://github.com/devlucascfarias/GAFoamincompressibleDenseParticleFluid.git
+cd GAFoamincompressibleDenseParticleFluid
+```
 
-# Crie e ative o ambiente virtual
+### 2. Crie e ative um ambiente virtual
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
-# Instale as dependências
+### 3. Instale as dependências
+
+```bash
 pip install -r requirements.txt
+```
 
-# Execute o programa
+### 4. Execute o programa
+
+```bash
 python3 main.py
 ```
 
 ---
 
-## 2. Gerando um Executável com PyInstaller
+## (Opcional) Criando um comando global `gafoam`
+
+Se quiser rodar o programa de qualquer lugar do terminal, faça:
 
 ```bash
-# Instale o PyInstaller (se ainda não tiver)
-pip install pyinstaller
-
-# Gere o executável
-pyinstaller --onefile --windowed main.py
-
-# Execute o programa (o executável estará na pasta dist)
-./dist/main
-
-# Se aparecer erro de Qt, instale a dependência do sistema:
-sudo apt install libxcb-xinerama0
-```
-
----
-
-## 3. Usando Docker
-
-```bash
-# Crie o arquivo Dockerfile com o conteúdo abaixo:
-cat <<EOF > Dockerfile
-FROM python:3.12
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-CMD ["python", "main.py"]
-EOF
-
-# Construa a imagem Docker
-docker build -t gafoam .
-
-# Rode o container
-docker run -it --rm gafoam
-```
-
----
-
-## 4. (Opcional) Criando um comando global no sistema
-
-```bash
-# Crie um script bash para rodar o programa de qualquer lugar
 echo '#!/bin/bash
 export LD_LIBRARY_PATH=""
-source /CAMINHO/ABSOLUTO/DO/PROJETO/.venv/bin/activate
-python3 /CAMINHO/ABSOLUTO/DO/PROJETO/main.py' | sudo tee /usr/local/bin/gafoam > /dev/null
+source /CAMINHO/ABSOLUTO/DA/PASTA/.venv/bin/activate
+python3 /CAMINHO/ABSOLUTO/DA/PASTA/main.py' | sudo tee /usr/local/bin/gafoam > /dev/null
 
-# Torne o script executável
 sudo chmod +x /usr/local/bin/gafoam
+```
+**Substitua `/CAMINHO/ABSOLUTO/DA/PASTA` pelo caminho completo da pasta do projeto.**
 
-# Agora basta digitar "gafoam" em qualquer terminal para abrir o programa
+Agora basta digitar:
+```bash
 gafoam
 ```
-**Substitua `/CAMINHO/ABSOLUTO/DO/PROJETO` pelo caminho real do seu projeto.**
 
 ---
 
 ## Observações
 
-- Certifique-se de que o OpenFOAM esteja instalado e configurado, se necessário.
-- Se tiver dúvidas, abra uma issue ou entre em contato com o mantenedor.
+- Certifique-se de que o OpenFOAM esteja instalado e configurado no seu sistema, se necessário.
+- Se aparecer erro relacionado ao Qt, instale a dependência do sistema:
+  ```bash
+  sudo apt install libxcb-xinerama0
+  ```
+- Para dúvidas, abra uma issue no repositório.
+
+---
