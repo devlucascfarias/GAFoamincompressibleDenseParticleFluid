@@ -29,7 +29,8 @@ pip install -r requirements.txt
 ### 4. Execute o programa
 
 ```bash
-python3 main.py
+LD_LIBRARY_PATH="" python main.py
+
 ```
 
 ---
