@@ -53,7 +53,10 @@ class OpenFOAMInterface(QWidget):
         self.residualData = {}
         self.timeData = []
         self.residualLines = {}
-        self.colors = ['r', 'g', 'b', 'c', 'm', 'y', 'w'] 
+        self.colors = ['r', 'g', 'b', 'c', 'm', 'y', 'w']
+        # Adiciona armazenamento para max(cloud:alpha)
+        self.maxCloudAlphaData = []
+        self.maxCloudAlphaLine = None 
         
         self.mainVerticalLayout = QVBoxLayout(self)
         self.mainVerticalLayout.setContentsMargins(5, 5, 5, 5)
@@ -228,6 +231,11 @@ class OpenFOAMInterface(QWidget):
         self.setCoresButton = QPushButton("Set Cores for decomposePar", self)
         self.setCoresButton.clicked.connect(self.configureDecomposeParCores)
         buttonRowLayout.addWidget(self.setCoresButton)
+
+        # Botão Info da Simulação
+        # self.simInfoButton = QPushButton("Info da Simulação", self)
+        # self.simInfoButton.clicked.connect(self.showSimulationInfo)
+        # buttonRowLayout.addWidget(self.simInfoButton)
 
         terminalLayout.addLayout(buttonRowLayout)
         
@@ -539,6 +547,8 @@ class OpenFOAMInterface(QWidget):
             current_time = float(current_time_match.group(1))
             if current_time not in self.timeData:
                 self.timeData.append(current_time)
+                if len(self.maxCloudAlphaData) < len(self.timeData):
+                    self.maxCloudAlphaData.append(None)
 
         residual_match = re.search(r'smoothSolver:  Solving for ([a-zA-Z0-9_.]+), Initial residual = ([0-9.e+-]+)', line)
         if residual_match:
@@ -560,6 +570,25 @@ class OpenFOAMInterface(QWidget):
 
             self.updateResidualPlot(variable)
 
+        # Captura max(cloud:alpha)
+        max_alpha_match = re.search(r'Max cell volume fraction\s*=\s*([0-9.eE+-]+)', line)
+        if max_alpha_match:
+            value = float(max_alpha_match.group(1))
+            # Garante que o valor seja associado ao último tempo lido
+            if self.timeData:
+                # Sincroniza: se já existe valor para este tempo, substitui; senão, adiciona
+                if len(self.maxCloudAlphaData) == len(self.timeData):
+                    self.maxCloudAlphaData[-1] = value
+                elif len(self.maxCloudAlphaData) < len(self.timeData):
+                    # Preenche com None se necessário
+                    while len(self.maxCloudAlphaData) < len(self.timeData) - 1:
+                        self.maxCloudAlphaData.append(None)
+                    self.maxCloudAlphaData.append(value)
+                else:
+                    # Caso raro: mais maxCloudAlpha do que timeData
+                    self.maxCloudAlphaData = self.maxCloudAlphaData[:len(self.timeData)-1] + [value]
+                self.updateMaxCloudAlphaPlot()
+
     def updateResidualPlot(self, variable):
         """
         Atualiza o gráfico de resíduos para uma variável específica.
@@ -571,11 +600,23 @@ class OpenFOAMInterface(QWidget):
             if filtered_time_data and filtered_residual_data:
                 self.residualLines[variable].setData(filtered_time_data, filtered_residual_data)
 
+    def updateMaxCloudAlphaPlot(self):
+        # Cria a linha se não existir
+        if self.maxCloudAlphaLine is None:
+            pen = pg.mkPen(color='r', width=2, style=Qt.DashLine)
+            self.maxCloudAlphaLine = self.graphWidget.plot([], [], name='max(cloud:alpha)', pen=pen)
+        # Plota apenas os pontos válidos
+        times = [t for t, v in zip(self.timeData, self.maxCloudAlphaData) if v is not None]
+        values = [v for v in self.maxCloudAlphaData if v is not None]
+        self.maxCloudAlphaLine.setData(times, values)
+
     def clearResidualPlot(self):
         self.timeData = []
         self.residualData = {}
         self.graphWidget.clear()
         self.residualLines = {}
+        self.maxCloudAlphaData = []
+        self.maxCloudAlphaLine = None
 
     def connectProcessSignals(self, process):
         """
@@ -1278,6 +1319,35 @@ class OpenFOAMInterface(QWidget):
         
         event.accept()  
 
+    def showSimulationInfo(self):
+        info_text = (
+            "Com o tempo, este valor aumentou significativamente, chegando a ~0.739836.\n\n"
+            "Isso significa que em pelo menos uma célula do domínio, cerca de 74% do volume está ocupado por partículas. "
+            "Isso indica uma região de alta concentração, o que pode ser indicativo de aglomeração ou sedimentação das partículas.\n\n"
+            "O que isso pode indicar fisicamente?\n"
+            "O aumento expressivo de max(cloud:alpha) pode indicar:\n\n"
+            "- Formação de uma zona de acúmulo de partículas (sedimentação ou aglomeração local).\n"
+            "- Baixa dispersão devido a características do escoamento ou forças de interação entre partículas.\n"
+            "- Restrição de escoamento em regiões densamente povoadas por partículas.\n\n"
+            "🔧 Considerações numéricas\n"
+            "Apesar do aumento da fração volumétrica de partículas, o solver continua convergindo (Final residual < 1e-6), o que é bom.\n\n"
+            "Porém, valores muito altos de alpha (>0.6) podem causar problemas de estabilidade ou de interpretação física, "
+            "especialmente se o modelo assumir regime diluído (por exemplo, se estiver usando o modelo kinematicCloud, que assume interação fraca entre partículas).\n\n"
+            "Se estiver usando um modelo denso (denseParticleFoam ou similar), é esperado que alpha seja mais alto, mas precisa garantir que está dentro dos limites físicos e consistentes com o modelo de interação partícula-partícula."
+        )
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Informações da Simulação")
+        dialog.resize(600, 400)
+        layout = QVBoxLayout(dialog)
+        label = QLabel(info_text, dialog)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        closeButton = QPushButton("Fechar", dialog)
+        closeButton.clicked.connect(dialog.accept)
+        layout.addWidget(closeButton)
+        dialog.setLayout(layout)
+        dialog.exec_()
+        
 class FluidProperties:
     def __init__(self):
         self.c0, self.c1, self.c2, self.c3 = 999.84, 0.0679, -0.0085, 0.0001
