@@ -140,8 +140,52 @@ class OpenFOAMInterface(QWidget):
     
     def setupMenuBar(self):
         self.menuBar = QMenuBar(self)
+        self.menuBar.setStyleSheet("""
+            QMenuBar {
+                background-color: #2c3e50;
+                color: white;
+                border: 1px solid #34495e;
+                padding: 4px;
+                font-weight: bold;
+            }
+            QMenuBar::item {
+                background-color: transparent;
+                padding: 8px 12px;
+                border-radius: 4px;
+            }
+            QMenuBar::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QMenuBar::item:pressed {
+                background-color: #2980b9;
+            }
+        """)
         
         fileMenu = QMenu("File", self.menuBar)
+        fileMenu.setStyleSheet("""
+            QMenu {
+                background-color: #34495e;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                padding: 5px;
+            }
+            QMenu::item {
+                background-color: transparent;
+                padding: 8px 20px;
+                border-radius: 3px;
+            }
+            QMenu::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QMenu::separator {
+                height: 1px;
+                background-color: #3498db;
+                margin: 5px 0px;
+            }
+        """)
         
         refreshTreeAction = QAction("Refresh Tree", self)
         refreshTreeAction.triggered.connect(lambda: self.populateTreeView(QFileInfo(self.unvFilePath).absolutePath() if self.unvFilePath else None))
@@ -169,6 +213,37 @@ class OpenFOAMInterface(QWidget):
         openfoamMenu = QMenu("OpenFOAM", self.menuBar)
         
         self.versionComboBox = QComboBox(self)
+        self.versionComboBox.setStyleSheet("""
+            QComboBox {
+                background-color: #34495e;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                padding: 5px 10px;
+                font-weight: bold;
+                min-width: 120px;
+            }
+            QComboBox:hover {
+                background-color: #3498db;
+                border-color: #2980b9;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: url(down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #34495e;
+                color: white;
+                border: 1px solid #3498db;
+                selection-background-color: #3498db;
+                outline: none;
+            }
+        """)
         self.versionComboBox.addItems(self.detectOpenFOAMVersions())
         self.versionComboBox.setCurrentText(self.currentOpenFOAMVersion)
         self.versionComboBox.currentTextChanged.connect(self.setOpenFOAMVersion)
@@ -213,21 +288,20 @@ class OpenFOAMInterface(QWidget):
         self.convertButton = QPushButton("⟺ Convert Mesh", self)
         self.convertButton.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background-color: #009688;
                 color: white;
                 border: none;
+                border: 2px solid #00796B;
                 padding: 8px 16px;
                 border-radius: 4px;
                 font-weight: bold;
                 text-align: left;
-                border: 2px solid #00796B;
-
             }
             QPushButton:hover {
-                background-color: #45a049;
+                background-color: #00796B;
             }
             QPushButton:pressed {
-                background-color: #3e8e41;
+                background-color: #00695C;
             }
         """)
         self.convertButton.clicked.connect(self.convertMesh)
@@ -236,20 +310,20 @@ class OpenFOAMInterface(QWidget):
         self.checkMeshButton = QPushButton("✓ Check Mesh", self)
         self.checkMeshButton.setStyleSheet("""
             QPushButton {
-                background-color: #2196F3;
+                background-color: #009688;
                 color: white;
                 border: none;
+                border: 2px solid #00796B;
                 padding: 8px 16px;
                 border-radius: 4px;
-                border: 2px solid #00796B;
                 font-weight: bold;
                 text-align: left;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #00796B;
             }
             QPushButton:pressed {
-                background-color: #1565C0;
+                background-color: #00695C;
             }
         """)
         self.checkMeshButton.clicked.connect(self.checkMesh)
@@ -258,21 +332,20 @@ class OpenFOAMInterface(QWidget):
         self.decomposeParButton = QPushButton("⚡ Decompose Cores", self)
         self.decomposeParButton.setStyleSheet("""
             QPushButton {
-                background-color: #FF9800;
+                background-color: #009688;
                 color: white;
                 border: none;
                 border: 2px solid #00796B;
-
                 padding: 8px 16px;
                 border-radius: 4px;
                 font-weight: bold;
                 text-align: left;
             }
             QPushButton:hover {
-                background-color: #F57C00;
+                background-color: #00796B;
             }
             QPushButton:pressed {
-                background-color: #E65100;
+                background-color: #00695C;
             }
         """)
         self.decomposeParButton.clicked.connect(self.decomposePar)
@@ -281,7 +354,7 @@ class OpenFOAMInterface(QWidget):
         self.reconstructButton = QPushButton("⚙️ Reconstruct", self)
         self.reconstructButton.setStyleSheet("""
             QPushButton {
-                background-color: #9C27B0;
+                background-color: #009688;
                 color: white;
                 border: none;
                 border: 2px solid #00796B;
@@ -291,10 +364,10 @@ class OpenFOAMInterface(QWidget):
                 text-align: left;
             }
             QPushButton:hover {
-                background-color: #7B1FA2;
+                background-color: #00796B;
             }
             QPushButton:pressed {
-                background-color: #6A1B9A;
+                background-color: #00695C;
             }
         """)
         self.reconstructButton.clicked.connect(self.reconstructPar)
@@ -369,20 +442,20 @@ class OpenFOAMInterface(QWidget):
         self.logButton = QPushButton("📊 Show Logs (log.foamRun)", self)
         self.logButton.setStyleSheet("""
             QPushButton {
-                background-color: #3F51B5;
+                background-color: #009688;
                 color: white;
                 border: none;
+                border: 2px solid #00796B;
                 padding: 8px 16px;
                 border-radius: 4px;
-                border: 2px solid #00796B;
                 font-weight: bold;
                 text-align: left;
             }
             QPushButton:hover {
-                background-color: #3949AB;
+                background-color: #00796B;
             }
             QPushButton:pressed {
-                background-color: #303F9F;
+                background-color: #00695C;
             }
         """)
         self.logButton.clicked.connect(self.showSimulationLogs)
@@ -556,7 +629,21 @@ class OpenFOAMInterface(QWidget):
         
         # Terminal section
         terminalLayout = QVBoxLayout()
-        terminalLayout.addWidget(QLabel("Terminal and Logs", self))
+        
+        terminal_title = QLabel("Terminal and Logs", self)
+        terminal_title.setStyleSheet("""
+            QLabel {
+                background-color: #34495e;
+                color: #ecf0f1;
+                padding: 8px 15px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 13px;
+                border: 1px solid #3498db;
+                margin-bottom: 5px;
+            }
+        """)
+        terminalLayout.addWidget(terminal_title)
         
         self.outputArea = QTextEdit(self)
         self.outputArea.setReadOnly(True)
@@ -591,7 +678,21 @@ class OpenFOAMInterface(QWidget):
         
         # Residual plot section        
         residualLayout = QVBoxLayout()
-        residualLayout.addWidget(QLabel("Residual Plot", self))
+        
+        plot_title = QLabel("Residual Plot", self)
+        plot_title.setStyleSheet("""
+            QLabel {
+                background-color: #34495e;
+                color: #ecf0f1;
+                padding: 8px 15px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 13px;
+                border: 1px solid #3498db;
+                margin-bottom: 5px;
+            }
+        """)
+        residualLayout.addWidget(plot_title)
         
         self.graphWidget = pg.PlotWidget()
         self.graphWidget.setBackground('w')
@@ -713,11 +814,44 @@ class OpenFOAMInterface(QWidget):
     
     def setupStatusBar(self):
         self.statusBar = QStatusBar(self)
+        self.statusBar.setStyleSheet("""
+            QStatusBar {
+                background-color: #34495e;
+                color: white;
+                border-top: 1px solid #3498db;
+                padding: 5px;
+                font-weight: bold;
+            }
+            QStatusBar::item {
+                border: none;
+                border-right: 1px solid #3498db;
+                padding: 0px 10px;
+            }
+        """)
+        
+        # Styling individual labels
+        label_style = """
+            QLabel {
+                background-color: transparent;
+                color: #ecf0f1;
+                padding: 5px 10px;
+                border-radius: 3px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+        """
         
         self.meshPathLabel = QLabel("Mesh: None", self.statusBar)
+        self.meshPathLabel.setStyleSheet(label_style + "QLabel { color: #3498db; }")
+        
         self.solverLabel = QLabel(f"Solver: {self.currentSolver}", self.statusBar)
+        self.solverLabel.setStyleSheet(label_style + "QLabel { color: #2ecc71; }")
+        
         self.cpuUsageLabel = QLabel("CPU: --%", self.statusBar)
+        self.cpuUsageLabel.setStyleSheet(label_style + "QLabel { color: #f39c12; }")
+        
         self.memUsageLabel = QLabel("Memory: --%", self.statusBar)
+        self.memUsageLabel.setStyleSheet(label_style + "QLabel { color: #e74c3c; }")
 
         self.statusBar.addPermanentWidget(self.solverLabel, 1)
         self.statusBar.addPermanentWidget(self.meshPathLabel, 1)
@@ -1358,31 +1492,91 @@ class OpenFOAMInterface(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle("Calcular Δy")
         dialog.setModal(True)
-        dialog.resize(300, 200)
+        dialog.resize(350, 250)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #2c3e50;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+            }
+        """)
 
         layout = QVBoxLayout(dialog)
 
+        # Styling for labels in dialog
+        label_style = """
+            QLabel {
+                color: #ecf0f1;
+                font-weight: bold;
+                font-size: 12px;
+                padding: 5px;
+            }
+        """
+        
+        # Styling for input fields in dialog
+        input_style = """
+            QLineEdit {
+                background-color: #34495e;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border-color: #2ecc71;
+                background-color: #3c4f66;
+            }
+        """
+
         dLabel = QLabel("d (diâmetro):", dialog)
+        dLabel.setStyleSheet(label_style)
         dInput = QLineEdit(dialog)
+        dInput.setStyleSheet(input_style)
         dInput.setPlaceholderText("Exemplo: 0.106")
 
         nLabel = QLabel("n (distância do bocal):", dialog)
+        nLabel.setStyleSheet(label_style)
         nInput = QLineEdit(dialog)
+        nInput.setStyleSheet(input_style)
         nInput.setPlaceholderText("Exemplo: 30")
 
         mLabel = QLabel("m (distância de transição):", dialog)
+        mLabel.setStyleSheet(label_style)
         mInput = QLineEdit(dialog)
+        mInput.setStyleSheet(input_style)
         mInput.setPlaceholderText("Exemplo: 10")
 
         dyIn0Label = QLabel("dy_in_0 (altura inicial):", dialog)
+        dyIn0Label.setStyleSheet(label_style)
         dyIn0Input = QLineEdit(dialog)
+        dyIn0Input.setStyleSheet(input_style)
         dyIn0Input.setPlaceholderText("Exemplo: 0.00142")
 
         dyWall0Label = QLabel("dy_wall_0 (altura na parede):", dialog)
+        dyWall0Label.setStyleSheet(label_style)
         dyWall0Input = QLineEdit(dialog)
+        dyWall0Input.setStyleSheet(input_style)
         dyWall0Input.setPlaceholderText("Exemplo: 0.008")
 
         calculateButton = QPushButton("Calcular", dialog)
+        calculateButton.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:pressed {
+                background-color: #229954;
+            }
+        """)
         calculateButton.clicked.connect(lambda: self.calculateRatesFromDialog(
             dialog, dInput.text(), nInput.text(), mInput.text(), dyIn0Input.text(), dyWall0Input.text()
         ))
@@ -1485,10 +1679,42 @@ class OpenFOAMInterface(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle("Histórico de Simulações")
         dialog.resize(800, 400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #2c3e50;
+                border: 2px solid #3498db;
+                border-radius: 8px;
+            }
+        """)
 
         layout = QVBoxLayout(dialog)
 
         self.historyTable = QTableWidget(dialog)
+        self.historyTable.setStyleSheet("""
+            QTableWidget {
+                background-color: #34495e;
+                color: white;
+                border: 1px solid #3498db;
+                border-radius: 4px;
+                gridline-color: #3498db;
+                selection-background-color: #3498db;
+            }
+            QTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #3498db;
+            }
+            QTableWidget::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QHeaderView::section {
+                background-color: #2c3e50;
+                color: white;
+                padding: 10px;
+                border: 1px solid #3498db;
+                font-weight: bold;
+            }
+        """)
         self.historyTable.setColumnCount(5)
         self.historyTable.setHorizontalHeaderLabels(["Solver", "Malha", "Início", "Fim", "Status"])
         self.loadHistoryIntoTable()
@@ -1496,11 +1722,33 @@ class OpenFOAMInterface(QWidget):
 
         buttonLayout = QHBoxLayout()
         
+        # Styled buttons for dialog
+        button_style = """
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+            QPushButton:pressed {
+                background-color: #a93226;
+            }
+        """
+        
         clearAllButton = QPushButton("Limpar Tudo", dialog)
+        clearAllButton.setStyleSheet(button_style)
         clearAllButton.clicked.connect(self.clearAllSimulations)
         buttonLayout.addWidget(clearAllButton)
 
         deleteSelectedButton = QPushButton("Excluir Selecionado", dialog)
+        deleteSelectedButton.setStyleSheet(button_style.replace("#e74c3c", "#f39c12").replace("#c0392b", "#e67e22").replace("#a93226", "#d35400"))
         deleteSelectedButton.clicked.connect(self.deleteSelectedSimulation)
         buttonLayout.addWidget(deleteSelectedButton)
 
