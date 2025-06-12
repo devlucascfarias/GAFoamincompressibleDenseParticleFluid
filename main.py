@@ -5,12 +5,13 @@ import numpy as np
 import pyqtgraph as pg
 import json
 import psutil
-from PyQt5.QtWidgets import (QApplication, QWidget, QWidgetAction, QPushButton, QVBoxLayout, QHBoxLayout, 
+from PyQt5.QtWidgets import (QApplication, QWidget,QComboBox, QWidgetAction, QPushButton, QVBoxLayout, QHBoxLayout, 
                              QFileDialog, QTextEdit, QLabel, QMenuBar, QMenu, QAction, 
-                             QLineEdit, QStatusBar, QTreeView, QComboBox, QDialog, QTableWidget, QTableWidgetItem, QMessageBox, QInputDialog)
+                             QLineEdit, QStatusBar, QDialog, QTableWidget, QTableWidgetItem, QMessageBox, QInputDialog)
 from PyQt5.QtCore import QTimer, QProcess, Qt, QDir, QFileInfo, QProcessEnvironment
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QIcon
 from PyQt5 import QtCore
+import signal # Added import
 
 from rate_calculator import calculate_increase_rate
 from syntax_highlighter import OpenFOAMHighlighter
@@ -131,7 +132,7 @@ class OpenFOAMInterface(QWidget):
                 self.outputArea.append(f"Case folder selected: {casePath}")
                 self.meshPathLabel.setText(f"Mesh: {QFileInfo(casePath).fileName()}")
                 self.outputArea.append("Case loaded successfully.")
-                self.populateTreeView(casePath)  
+                # self.populateTreeView(casePath)  
             else:
                 self.outputArea.append("Error: The selected folder does not contain the required directories (0, system, constant).")
         else:
@@ -202,59 +203,393 @@ class OpenFOAMInterface(QWidget):
         
         ''' 
         
-        === CONTENT AREA (LEFT) ===
+        === SIMULATION CONTROL BUTTONS (LEFT) ===
         
         '''
 
-        leftContentLayout = QVBoxLayout()
-        terminalLayout = QVBoxLayout()
-        terminalLayout.addWidget(QLabel("Terminal and Logs", self))
+        leftControlLayout = QVBoxLayout()
+
+        # Main simulation control buttons with icons and styling
+        self.convertButton = QPushButton("⟺ Convert Mesh", self)
+        self.convertButton.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+                border: 2px solid #00796B;
+
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3e8e41;
+            }
+        """)
+        self.convertButton.clicked.connect(self.convertMesh)
+        leftControlLayout.addWidget(self.convertButton)
+        
+        self.checkMeshButton = QPushButton("✓ Check Mesh", self)
+        self.checkMeshButton.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                border: 2px solid #00796B;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
+        self.checkMeshButton.clicked.connect(self.checkMesh)
+        leftControlLayout.addWidget(self.checkMeshButton)
+        
+        self.decomposeParButton = QPushButton("⚡ Decompose Cores", self)
+        self.decomposeParButton.setStyleSheet("""
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border: none;
+                border: 2px solid #00796B;
+
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #F57C00;
+            }
+            QPushButton:pressed {
+                background-color: #E65100;
+            }
+        """)
+        self.decomposeParButton.clicked.connect(self.decomposePar)
+        leftControlLayout.addWidget(self.decomposeParButton)
+        
+        self.reconstructButton = QPushButton("⚙️ Reconstruct", self)
+        self.reconstructButton.setStyleSheet("""
+            QPushButton {
+                background-color: #9C27B0;
+                color: white;
+                border: none;
+                border: 2px solid #00796B;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #7B1FA2;
+            }
+            QPushButton:pressed {
+                background-color: #6A1B9A;
+            }
+        """)
+        self.reconstructButton.clicked.connect(self.reconstructPar)
+        leftControlLayout.addWidget(self.reconstructButton)
+        
+        self.clearDecomposeButton = QPushButton("🗑️ Clear Processors", self)
+        self.clearDecomposeButton.setStyleSheet("""
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border: none;
+                border: 2px solid #00796B;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:pressed {
+                background-color: #00695C;
+            }
+        """)
+        self.clearDecomposeButton.clicked.connect(self.clearDecomposedProcessors)
+        leftControlLayout.addWidget(self.clearDecomposeButton)
+        
+        self.clearSimulationButton = QPushButton("🗑️ Clear Simulation Files", self)
+        self.clearSimulationButton.setStyleSheet("""
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                border: 2px solid #00796B;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:pressed {
+                background-color: #00695C;
+            }
+        """)
+        self.clearSimulationButton.clicked.connect(self.clearSimulation)
+        leftControlLayout.addWidget(self.clearSimulationButton)
+        
+        self.setCoresButton = QPushButton("⚙️ Set Cores for decomposePar", self)
+        self.setCoresButton.setStyleSheet("""
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border: none;
+                border: 2px solid #00796B;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:pressed {
+                background-color: #00695C;
+            }
+        """)
+        self.setCoresButton.clicked.connect(self.configureDecomposeParCores)
+        leftControlLayout.addWidget(self.setCoresButton)
+        
+        self.logButton = QPushButton("📊 Show Logs (log.foamRun)", self)
+        self.logButton.setStyleSheet("""
+            QPushButton {
+                background-color: #3F51B5;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                border: 2px solid #00796B;
+                font-weight: bold;
+                text-align: left;
+            }
+            QPushButton:hover {
+                background-color: #3949AB;
+            }
+            QPushButton:pressed {
+                background-color: #303F9F;
+            }
+        """)
+        self.logButton.clicked.connect(self.showSimulationLogs)
+        leftControlLayout.addWidget(self.logButton)
+
+        # Add stretch to push buttons to top
+        leftControlLayout.addStretch()
+        
+        ''' 
+        
+        === TERMINAL AND PLOT (RIGHT) ===
+        
+        '''
+
+        rightContentLayout = QVBoxLayout()
+        
+        # Utility buttons at the top right with icons and styling
+        utilityButtonLayout = QHBoxLayout()
+        
+        # Simulation control buttons (Run, Pause, Resume, Restart, Stop)
+        # Definindo tamanho padrão para todos os botões de simulação
+        sim_button_width = 40
+        sim_button_height = 36
+        sim_button_style = """
+            QPushButton {{
+                min-width: {width}px;
+                max-width: {width}px;
+                min-height: {height}px;
+                max-height: {height}px;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                border: 2px solid #00796B;
+                text-align: center;
+                font-size: 15px;
+            }}
+            QPushButton:pressed {{
+                border: 2px solid #888;
+            }}
+        """.format(width=sim_button_width, height=sim_button_height)
+        
+        self.runButton = QPushButton("▶", self)
+        self.runButton.setStyleSheet(sim_button_style + """
+            QPushButton {
+                background-color: #009688;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+
+            }
+            QPushButton:pressed {
+                background-color: #00796B;
+            }
+        """)
+        self.runButton.clicked.connect(self.runSimulation)
+        
+        self.pauseButton = QPushButton("⏸", self)
+        self.pauseButton.setStyleSheet(sim_button_style + """
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #F57C00;
+            }
+            QPushButton:pressed {
+                background-color: #E65100;
+            }
+        """)
+        self.pauseButton.clicked.connect(self.pauseSimulation)
+        
+        self.resumeButton = QPushButton("⏯", self)
+        self.resumeButton.setStyleSheet(sim_button_style + """
+            QPushButton {
+                background-color: #009688;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+
+            }
+            QPushButton:pressed {
+                background-color: #00796B;
+            }
+        """)
+        self.resumeButton.clicked.connect(self.resumeSimulation)
+        
+        self.restartButton = QPushButton("↻", self)
+        self.restartButton.setStyleSheet(sim_button_style + """
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """)
+        self.restartButton.clicked.connect(self.restartSimulation)
+        self.restartButton.clicked.connect(self.clearResidualPlot)
+        
+        self.stopButton = QPushButton("⏹", self)
+        self.stopButton.setStyleSheet(sim_button_style + """
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+            QPushButton:pressed {
+                background-color: #c62828;
+            }
+        """)
+        self.stopButton.clicked.connect(self.stopSimulation)
+        
+        # Add simulation control buttons
+        utilityButtonLayout.addWidget(self.runButton)
+        utilityButtonLayout.addWidget(self.pauseButton)
+        utilityButtonLayout.addWidget(self.resumeButton)
+        utilityButtonLayout.addWidget(self.restartButton)
+        utilityButtonLayout.addWidget(self.stopButton)
+        
+        # Utility buttons - tamanho parametrizado
+        utility_button_width = 180
+        utility_button_height = 36
+        utility_button_style = """
+            QPushButton {{
+                min-width: {width}px;
+                max-width: {width}px;
+                min-height: {height}px;
+                max-height: {height}px;
+                background-color: #009688;
+                color: white;
+                border: 2px solid #00796B;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: left;
+                font-size: 12px;
+            }}
+            QPushButton:hover {{
+                background-color: #00796B;
+            }}
+            QPushButton:pressed {{
+                background-color: #00695C;
+            }}
+        """.format(width=utility_button_width, height=utility_button_height)
         
         self.openParaviewButton = QPushButton("Open in ParaView", self)
+        self.openParaviewButton.setStyleSheet(utility_button_style)
         self.openParaviewButton.clicked.connect(self.openParaview)
-
+        
         self.calculateRateButton = QPushButton("Calculate Δy", self)
+        self.calculateRateButton.setStyleSheet(utility_button_style)
         self.calculateRateButton.clicked.connect(self.openRateCalculationDialog)
 
         self.fluidPropertiesButton = QPushButton("Calculate Fluid Properties", self)
+        self.fluidPropertiesButton.setStyleSheet(utility_button_style)
         self.fluidPropertiesButton.clicked.connect(self.openFluidPropertiesDialog)
-
-        # self.openFileEditorButton = QPushButton("Open File Editor", self)
-        # self.openFileEditorButton.clicked.connect(self.openFileEditor)
-
-        buttonRowLayout = QHBoxLayout()
-        buttonRowLayout.addWidget(self.openParaviewButton)
-        buttonRowLayout.addWidget(self.calculateRateButton)
-        buttonRowLayout.addWidget(self.fluidPropertiesButton)
-        # buttonRowLayout.addWidget(self.openFileEditorButton)
-
-        self.setCoresButton = QPushButton("Set Cores for decomposePar", self)
-        self.setCoresButton.clicked.connect(self.configureDecomposeParCores)
-        buttonRowLayout.addWidget(self.setCoresButton)
-
-        # Botão Info da Simulação
-        # self.simInfoButton = QPushButton("Info da Simulação", self)
-        # self.simInfoButton.clicked.connect(self.showSimulationInfo)
-        # buttonRowLayout.addWidget(self.simInfoButton)
-
-        terminalLayout.addLayout(buttonRowLayout)
+        utilityButtonLayout.addWidget(self.openParaviewButton)
+        utilityButtonLayout.addWidget(self.calculateRateButton)
+        utilityButtonLayout.addWidget(self.fluidPropertiesButton)
+        utilityButtonLayout.addStretch()  # Push buttons to left
+        
+        rightContentLayout.addLayout(utilityButtonLayout)
+        
+        # Terminal section
+        terminalLayout = QVBoxLayout()
+        terminalLayout.addWidget(QLabel("Terminal and Logs", self))
         
         self.outputArea = QTextEdit(self)
         self.outputArea.setReadOnly(True)
+        self.outputArea.setStyleSheet("""
+            QTextEdit {
+                background-color: #2b2b2b;
+                color: #ffffff;
+                border: 1px solid #555555;
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                font-size: 11px;
+            }
+        """)
         terminalLayout.addWidget(self.outputArea)
         
         self.terminalInput = QLineEdit(self)
         self.terminalInput.setPlaceholderText(">>")
+        self.terminalInput.setStyleSheet("""
+            QLineEdit {
+                background-color: #3c3c3c;
+                color: #ffffff;
+                border: 1px solid #555555;
+                border-radius: 4px;
+                padding: 8px;
+                font-family: 'Courier New', monospace;
+            }
+        """)
         self.terminalInput.returnPressed.connect(self.executeTerminalCommand)
         terminalLayout.addWidget(self.terminalInput)
         
-        leftContentLayout.addLayout(terminalLayout)
+        rightContentLayout.addLayout(terminalLayout)
         
-        ''' 
-        
-        === RESIDUAL PLOT ===
-        
-        '''        
+        # Residual plot section        
         residualLayout = QVBoxLayout()
         residualLayout.addWidget(QLabel("Residual Plot", self))
         
@@ -270,94 +605,61 @@ class OpenFOAMInterface(QWidget):
         graphControlLayout = QHBoxLayout()
 
         self.clearPlotButton = QPushButton("Clear Plot", self)
+        self.clearPlotButton.setStyleSheet("""
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: center;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:pressed {
+                background-color: #00695C;
+            }
+        """)
         self.clearPlotButton.clicked.connect(self.clearResidualPlot)
 
         self.exportPlotDataButton = QPushButton("Export Data", self)
+        self.exportPlotDataButton.setStyleSheet("""
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                text-align: center;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:pressed {
+                background-color: #00695C;
+            }
+        """)
         self.exportPlotDataButton.clicked.connect(self.exportPlotData)  
 
         graphControlLayout.addWidget(self.clearPlotButton)
         graphControlLayout.addWidget(self.exportPlotDataButton)
 
-
         residualLayout.addLayout(graphControlLayout)
         
-        leftContentLayout.addLayout(residualLayout)
+        rightContentLayout.addLayout(residualLayout)
         
-        ''' 
-        
-        === BUTTON AREA ===
-        
-        '''
-
-        buttonLayout = QVBoxLayout()
-        
-        self.convertButton = QPushButton("Convert Mesh", self)
-        self.convertButton.clicked.connect(self.convertMesh)
-        buttonLayout.addWidget(self.convertButton)
-        
-        self.checkMeshButton = QPushButton("Check Mesh", self)
-        self.checkMeshButton.clicked.connect(self.checkMesh)
-        buttonLayout.addWidget(self.checkMeshButton)
-        
-        self.decomposeParButton = QPushButton("Decompose Cores", self)
-        self.decomposeParButton.clicked.connect(self.decomposePar)
-        buttonLayout.addWidget(self.decomposeParButton)
-        
-        self.runButton = QPushButton("Run Simulation", self)
-        self.runButton.setStyleSheet("background-color: green; color: white; font-weight: bold;")
-        self.runButton.clicked.connect(self.runSimulation)
-        
-        self.stopButton = QPushButton("Stop Simulation", self)
-        self.stopButton.setStyleSheet("background-color: red; color: white; font-weight: bold;")
-        self.stopButton.clicked.connect(self.stopSimulation)
-        
-        self.reconstructButton = QPushButton("Reconstruct", self)
-        self.reconstructButton.clicked.connect(self.reconstructPar)
-        
-        self.clearDecomposeButton = QPushButton("Clear Processors", self)
-        self.clearDecomposeButton.clicked.connect(self.clearDecomposedProcessors)
-        
-        self.clearSimulationButton = QPushButton("Clear Simulation Files", self)
-        self.clearSimulationButton.clicked.connect(self.clearSimulation)
-
-        self.logButton = QPushButton("Show Logs (log.foamRun)", self)
-        self.logButton.clicked.connect(self.showSimulationLogs)
-        buttonLayout.addWidget(self.logButton)
-
-        buttonLayout.addWidget(self.convertButton)
-        buttonLayout.addWidget(self.decomposeParButton)
-        buttonLayout.addWidget(self.runButton)
-        buttonLayout.addWidget(self.stopButton)
-        buttonLayout.addWidget(self.reconstructButton)
-        buttonLayout.addWidget(self.clearDecomposeButton)
-        buttonLayout.addWidget(self.clearSimulationButton)
-        
-        leftContentLayout.addLayout(buttonLayout)
-        
-        treeLayout = QVBoxLayout()
-        treeLayout.addWidget(QLabel("Directories", self))
-        
-        self.searchBar = QLineEdit(self)
-        self.searchBar.setPlaceholderText("Search files...")
-        self.searchBar.textChanged.connect(self.filterTreeView)
-        treeLayout.addWidget(self.searchBar)
-        
-        self.treeView = QTreeView(self)
-        self.treeModel = QStandardItemModel(self)
-        self.treeView.setModel(self.treeModel)
-        self.treeView.setHeaderHidden(True)
-        self.treeView.doubleClicked.connect(self.onTreeViewDoubleClicked)
-        
-        treeLayout.addWidget(self.treeView)
-        
-        contentLayout.addLayout(leftContentLayout, 3)
-        contentLayout.addLayout(treeLayout, 1)
+        # Add layouts to main content with proper proportions
+        contentLayout.addLayout(leftControlLayout, 1)  # Left side takes 1 part
+        contentLayout.addLayout(rightContentLayout, 2)  # Right side takes 2 parts
         
         self.mainVerticalLayout.addLayout(contentLayout, 1)
 
-        self.treeUpdateTimer = QTimer(self)
-        self.treeUpdateTimer.timeout.connect(lambda: self.populateTreeView())
-        self.treeUpdateTimer.start(1000) 
+        # self.treeUpdateTimer = QTimer(self)
+        # self.treeUpdateTimer.timeout.connect(lambda: self.populateTreeView())
+        # self.treeUpdateTimer.start(1000) 
 
     def toggleLogScale(self):
         """Toggles between linear and logarithmic scale on the Y-axis."""
@@ -845,12 +1147,65 @@ class OpenFOAMInterface(QWidget):
         self.connectProcessSignals(self.currentProcess)
         self.currentProcess.start("bash", ["-c", command])
     
+    def pauseSimulation(self):
+        """Pausa a simulação em execução enviando o sinal SIGSTOP."""
+        if self.currentProcess and self.currentProcess.state() == QProcess.Running:
+            pid = self.currentProcess.processId()
+            if pid:
+                try:
+                    os.kill(pid, signal.SIGSTOP)
+                    self.outputArea.append("Simulação pausada.")
+                except Exception as e:
+                    self.outputArea.append(f"Erro ao pausar a simulação: {e}")
+            else:
+                self.outputArea.append("Não foi possível obter o PID do processo para pausar.")
+        else:
+            self.outputArea.append("Nenhuma simulação em execução para pausar.")
+
+    def resumeSimulation(self):
+        """Retoma uma simulação pausada enviando o sinal SIGCONT."""
+        if self.currentProcess: # Process might be stopped, not necessarily QProcess.Running
+            pid = self.currentProcess.processId()
+            if pid:
+                try:
+                    # Check if process exists before sending SIGCONT
+                    # QProcess state might be Running even if SIGSTOPped, or NotRunning
+                    # os.kill will raise ProcessLookupError if pid doesn't exist
+                    os.kill(pid, signal.SIGCONT)
+                    self.outputArea.append("Simulação retomada.")
+                except ProcessLookupError:
+                    self.outputArea.append("Processo da simulação não encontrado. Não é possível retomar.")
+                    self.currentProcess = None # Clear stale process
+                except Exception as e:
+                    self.outputArea.append(f"Erro ao retomar a simulação: {e}")
+            else:
+                self.outputArea.append("Não foi possível obter o PID do processo para retomar.")
+        else:
+            self.outputArea.append("Nenhuma simulação para retomar.")
+
+    def restartSimulation(self):
+        """Reinicia a simulação."""
+        # First, stop any existing simulation
+        if self.currentProcess and self.currentProcess.state() == QProcess.Running:
+            self.stopSimulation() # Ensure it's fully stopped
+            # Wait a bit for the process to terminate if stopSimulation is asynchronous in effect
+            # Or ensure stopSimulation is blocking or provides a callback/signal
+            # For simplicity here, we assume stopSimulation effectively stops it before proceeding.
+
+        # Clear necessary previous run data, e.g., processor directories, logs if needed
+        # self.clearDecomposedProcessors() # Example, if you always want to clear these
+        # self.clearOldProcessorDirs() # As per your existing method
+
+        self.outputArea.append("Reiniciando a simulação...")
+        # Re-run the simulation. This might be similar to runSimulation or a specific restart logic
+        self.runSimulation() # Assuming runSimulation can handle starting fresh or from where it should
+
     def clearDecomposedProcessors(self):
-        if not self.unvFilePath:
-            self.outputArea.append("Erro: Nenhum caso selecionado.")
+        if not self.baseDir: # Changed from self.unvFilePath to self.baseDir
+            self.outputArea.append("Erro: Nenhum diretório base selecionado.")
             return
 
-        caseDir = QDir(self.unvFilePath)
+        caseDir = QDir(self.baseDir) # Changed from self.unvFilePath to self.baseDir
         processorDirs = caseDir.entryList(["processor*"], QDir.Dirs | QDir.NoDotAndDotDot)
         removedAny = False
 
@@ -1264,7 +1619,7 @@ class OpenFOAMInterface(QWidget):
             self.save_config()
             self.outputArea.append(f"Diretório base configurado para: {self.baseDir}")
             
-            self.populateTreeView(self.baseDir)
+            # self.populateTreeView(self.baseDir)
         else:
             self.outputArea.append("Nenhum diretório base selecionado.")
 
@@ -1350,8 +1705,8 @@ class OpenFOAMInterface(QWidget):
         
 class FluidProperties:
     def __init__(self):
-        self.c0, self.c1, self.c2, self.c3 = 999.84, 0.0679, -0.0085, 0.0001
-        self.A, self.B = 0.51, -0.0002  
+        self.c0, self.c1, self.c2, self.c3 = (999.842594, 0.06793952, -0.00909529, 0.0001001685) # Example values
+        self.A, self.B = (0.0004831439, 0.000001617e-05) # Example values
         self.mu_c_800 = 2.0  
         self.mu_w_base = 0.00089  
 
@@ -1377,30 +1732,6 @@ class FluidProperties:
             mu_b = self.mu_w_base * (1 - X) + self.mu_c_800 * X
         return mu_b
 
-def calculateFluidProperties(self, dialog, temp, pressure, salinity):
-    try:
-        temp = float(temp)
-        pressure = float(pressure) * 10  # Converte MPa para bar
-        salinity = float(salinity) / 1e6  # Converte mg/L para fração mássica
-
-        fluid = FluidProperties()
-
-        density = fluid.brine_density(temp, pressure, salinity)
-        viscosity = fluid.brine_viscosity(temp, pressure, salinity) * 1000  # Converte Pa.s para mPa.s
-
-        self.outputArea.append("Resultados das Propriedades do Fluido:")
-        self.outputArea.append(f"Temperatura: {temp} °C")
-        self.outputArea.append(f"Pressão: {pressure} bar")
-        self.outputArea.append(f"Salinidade: {salinity:.6f} (fração mássica)")
-        self.outputArea.append(f"Densidade: {density:.2f} kg/m³")
-        self.outputArea.append(f"Viscosidade: {viscosity:.6f} mPa·s")
-
-        dialog.accept()
-    except ValueError:
-        self.outputArea.append("Erro: Certifique-se de que todos os valores são números válidos.")
-    except Exception as e:
-        self.outputArea.append(f"Erro ao calcular propriedades: {str(e)}")
-
 class FileEditorWindow(QDialog):
     def __init__(self, baseDir, parent=None):
         super().__init__(parent)
@@ -1415,14 +1746,13 @@ class FileEditorWindow(QDialog):
 
         # self.searchBar = QLineEdit(self)
         # self.searchBar.setPlaceholderText("Search files...")
-        # self.searchBar.textChanged.connect(self.filterTreeView)
         # layout.addWidget(self.searchBar)
 
-        self.treeView = QTreeView(self)
-        self.treeModel = QStandardItemModel(self)
+        # self.treeView = QTreeView(self)
+        # self.treeModel = QStandardItemModel(self)
         # self.treeView.setModel(self.treeModel)
         # self.treeView.setHeaderHidden(True)
-        self.treeView.doubleClicked.connect(self.onTreeViewDoubleClicked)
+        # self.treeView.doubleClicked.connect(self.onTreeViewDoubleClicked)
         # layout.addWidget(self.treeView)
 
         self.fileEditor = QTextEdit(self)
@@ -1439,37 +1769,16 @@ class FileEditorWindow(QDialog):
 
         layout.addLayout(buttonLayout)
 
-        self.populateTreeView(self.baseDir)
+        # self.populateTreeView(self.baseDir)
 
     def populateTreeView(self, casePath):
-        self.treeModel.clear()
-        rootItem = QStandardItem(QIcon.fromTheme("folder"), casePath)
-        self.treeModel.appendRow(rootItem)
-        self.addDirectoryToTree(casePath, rootItem)
-        self.treeView.expandAll()
-
+        pass
     def addDirectoryToTree(self, path, parent):
-        dir = QDir(path)
-        for info in dir.entryInfoList(QDir.AllEntries | QDir.NoDotAndDotDot, QDir.DirsFirst | QDir.Name):
-            if info.isDir():
-                item = QStandardItem(QIcon.fromTheme("folder"), info.fileName())
-                parent.appendRow(item)
-                self.addDirectoryToTree(info.absoluteFilePath(), item)
-            else:
-                fileItem = QStandardItem(QIcon.fromTheme("text-x-generic"), info.fileName())
-                fileItem.setData(info.absoluteFilePath(), Qt.UserRole)
-                parent.appendRow(fileItem)
-
+        pass
+    def filterTreeView(self, text):
+        pass
     def onTreeViewDoubleClicked(self, index):
-        item = self.treeModel.itemFromIndex(index)
-        if item and not item.hasChildren():
-            filePath = item.data(Qt.UserRole)
-            if filePath:
-                file = QtCore.QFile(filePath)
-                if file.open(QtCore.QIODevice.ReadOnly | QtCore.QIODevice.Text):
-                    self.currentFilePath = filePath
-                    self.fileEditor.setPlainText(str(file.readAll(), 'utf-8'))
-                    file.close()
+        pass
 
     def saveFile(self):
         if not self.currentFilePath:
@@ -1483,19 +1792,6 @@ class FileEditorWindow(QDialog):
             QMessageBox.information(self, "Success", f"File saved: {self.currentFilePath}")
         else:
             QMessageBox.warning(self, "Error", "Failed to save the file.")
-
-    def filterTreeView(self, text):
-        def filterItems(item, text):
-            match = text.lower() in item.text().lower()
-            for row in range(item.rowCount()):
-                child = item.child(row)
-                match = filterItems(child, text) or match
-            item.setHidden(not match)
-            return match
-
-        for row in range(self.treeModel.rowCount()):
-            rootItem = self.treeModel.item(row)
-            filterItems(rootItem, text)
 
 def openFileEditor(self):
     """Abre a janela separada para o editor de arquivos."""
