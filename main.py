@@ -924,16 +924,18 @@ class OpenFOAMInterface(QWidget):
                 fileItem.setData(info.absoluteFilePath(), Qt.UserRole)
     
     def openParaview(self):
-        if not self.unvFilePath:
+        if not self.baseDir:
             self.outputArea.append("Erro: Nenhum caso selecionado")
             return
-        
-        caseDir = QFileInfo(self.unvFilePath).absolutePath()
-        command = f"paraview --data={caseDir}/foam.foam"
-        
+        foam_file = os.path.join(self.baseDir, "foam.foam")
+        if not os.path.exists(foam_file):
+            # Cria o arquivo vazio se não existir
+            with open(foam_file, "w") as f:
+                pass
+            self.outputArea.append(f"Arquivo {foam_file} criado automaticamente.")
+        command = f"paraview --data={foam_file}"
         process = QProcess(self)
         process.start(command)
-        
         if not process.waitForStarted():
             self.outputArea.append("Erro ao abrir o ParaView")
         else:
@@ -1131,6 +1133,7 @@ class OpenFOAMInterface(QWidget):
         
         self.currentProcess = QProcess(self)
         self.setupProcessEnvironment(self.currentProcess)
+        self.currentProcess.setWorkingDirectory(self.baseDir)
         
         def finished(code):
             self.outputArea.append(f"Reconstrução finalizada com código {code}", 5000)
@@ -1156,7 +1159,7 @@ class OpenFOAMInterface(QWidget):
 
         self.currentProcess = QProcess(self)
         self.setupProcessEnvironment(self.currentProcess)
-        self.currentProcess.setWorkingDirectory(self.unvFilePath)
+        self.currentProcess.setWorkingDirectory(self.baseDir)
 
         def finished(code):
             if code == 0:
@@ -1282,13 +1285,18 @@ class OpenFOAMInterface(QWidget):
         self.currentProcess.start("bash", ["-c", command])
     
     def pauseSimulation(self):
-        """Pausa a simulação em execução enviando o sinal SIGSTOP."""
+        """Pausa a simulação em execução enviando o sinal SIGSTOP para todos os processos filhos."""
         if self.currentProcess and self.currentProcess.state() == QProcess.Running:
             pid = self.currentProcess.processId()
             if pid:
                 try:
-                    os.kill(pid, signal.SIGSTOP)
-                    self.outputArea.append("Simulação pausada.")
+                    import psutil
+                    parent = psutil.Process(pid)
+                    # Pausa todos os filhos recursivamente
+                    for child in parent.children(recursive=True):
+                        child.suspend()
+                    parent.suspend()
+                    self.outputArea.append("Simulação pausada (todos os processos).")
                 except Exception as e:
                     self.outputArea.append(f"Erro ao pausar a simulação: {e}")
             else:
@@ -1297,19 +1305,18 @@ class OpenFOAMInterface(QWidget):
             self.outputArea.append("Nenhuma simulação em execução para pausar.")
 
     def resumeSimulation(self):
-        """Retoma uma simulação pausada enviando o sinal SIGCONT."""
-        if self.currentProcess: # Process might be stopped, not necessarily QProcess.Running
+        """Retoma uma simulação pausada enviando o sinal SIGCONT para todos os processos filhos."""
+        if self.currentProcess:
             pid = self.currentProcess.processId()
             if pid:
                 try:
-                    # Check if process exists before sending SIGCONT
-                    # QProcess state might be Running even if SIGSTOPped, or NotRunning
-                    # os.kill will raise ProcessLookupError if pid doesn't exist
-                    os.kill(pid, signal.SIGCONT)
-                    self.outputArea.append("Simulação retomada.")
-                except ProcessLookupError:
-                    self.outputArea.append("Processo da simulação não encontrado. Não é possível retomar.")
-                    self.currentProcess = None # Clear stale process
+                    import psutil
+                    parent = psutil.Process(pid)
+                    # Retoma todos os filhos recursivamente
+                    for child in parent.children(recursive=True):
+                        child.resume()
+                    parent.resume()
+                    self.outputArea.append("Simulação retomada (todos os processos).")
                 except Exception as e:
                     self.outputArea.append(f"Erro ao retomar a simulação: {e}")
             else:
@@ -1335,11 +1342,11 @@ class OpenFOAMInterface(QWidget):
         self.runSimulation() # Assuming runSimulation can handle starting fresh or from where it should
 
     def clearDecomposedProcessors(self):
-        if not self.baseDir: # Changed from self.unvFilePath to self.baseDir
+        if not self.baseDir: 
             self.outputArea.append("Erro: Nenhum diretório base selecionado.")
             return
 
-        caseDir = QDir(self.baseDir) # Changed from self.unvFilePath to self.baseDir
+        caseDir = QDir(self.baseDir)
         processorDirs = caseDir.entryList(["processor*"], QDir.Dirs | QDir.NoDotAndDotDot)
         removedAny = False
 
@@ -1721,7 +1728,6 @@ class OpenFOAMInterface(QWidget):
         layout.addWidget(self.historyTable)
 
         buttonLayout = QHBoxLayout()
-        
         # Styled buttons for dialog
         button_style = """
             QPushButton {
@@ -1741,7 +1747,6 @@ class OpenFOAMInterface(QWidget):
                 background-color: #a93226;
             }
         """
-        
         clearAllButton = QPushButton("Limpar Tudo", dialog)
         clearAllButton.setStyleSheet(button_style)
         clearAllButton.clicked.connect(self.clearAllSimulations)
@@ -1752,9 +1757,41 @@ class OpenFOAMInterface(QWidget):
         deleteSelectedButton.clicked.connect(self.deleteSelectedSimulation)
         buttonLayout.addWidget(deleteSelectedButton)
 
+        # Botão para ver os últimos logs
+        viewLogsButton = QPushButton("Ver Últimos Logs", dialog)
+        viewLogsButton.setStyleSheet(button_style.replace("#e74c3c", "#2980b9").replace("#c0392b", "#3498db").replace("#a93226", "#2471a3"))
+        viewLogsButton.clicked.connect(self.showSelectedSimulationLogs)
+        buttonLayout.addWidget(viewLogsButton)
+
         layout.addLayout(buttonLayout)
         dialog.setLayout(layout)
         dialog.exec_()
+
+    def showSelectedSimulationLogs(self):
+        selectedRow = self.historyTable.currentRow()
+        if selectedRow == -1:
+            QMessageBox.warning(self, "Nenhuma Seleção", "Por favor, selecione uma simulação para ver os logs.")
+            return
+        history = self.simulationHistory.get_history()
+        if selectedRow >= len(history):
+            QMessageBox.warning(self, "Erro", "Índice de simulação inválido.")
+            return
+        entry = history[selectedRow]
+        log_data = entry.get("log_data", [])
+        log_text = "\n".join(log_data) if log_data else "Nenhum log relevante encontrado."
+        logDialog = QDialog(self)
+        logDialog.setWindowTitle("Últimos Logs da Simulação")
+        logDialog.resize(700, 400)
+        vbox = QVBoxLayout(logDialog)
+        logEdit = QTextEdit(logDialog)
+        logEdit.setReadOnly(True)
+        logEdit.setPlainText(log_text)
+        vbox.addWidget(logEdit)
+        closeBtn = QPushButton("Fechar", logDialog)
+        closeBtn.clicked.connect(logDialog.accept)
+        vbox.addWidget(closeBtn)
+        logDialog.setLayout(vbox)
+        logDialog.exec_()
 
     def loadHistoryIntoTable(self):
         """Carrega o histórico na tabela."""
